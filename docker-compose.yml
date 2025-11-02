@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"      # порт для брокера
+      - "15672:15672"    # веб-интерфейс управления
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  app:
+    build: .
+    command: python main.py
+    volumes:
+      - .:/app
+    depends_on:
+      - rabbitmq
+
+  worker:
+    build: .
+    command: celery -A main.celery worker --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+      - rabbitmq
