@@ -63,7 +63,7 @@ def calculate_pi(
 
     print(f"Calculation completed in {total_time:.2f} seconds")
 
-    format_str = f"{{0:.{n_decimals+1}f}}"
+    format_str = f"{{0:.{n_decimals}f}}"
     return format_str.format(pi_result)
 
 if __name__ == '__main__':
