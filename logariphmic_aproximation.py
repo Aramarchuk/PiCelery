@@ -4,14 +4,33 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import json
 import datetime
-import os
-import sys
 from typing import Tuple
 
 
 def fit_power_law(iterations: np.ndarray, times: np.ndarray) -> Tuple[float, float]:
-    """Fit log-log linear model: log T = a + b log n. Returns (a, b) as float64.
-    Filters out non-positive values because log requires > 0.
+    """
+    Fit log-log linear model: log T = a + b log n.
+
+    Performs power-law regression to model the relationship between
+    the number of iterations and execution time. This is used for
+    time estimation in π calculations.
+
+    Args:
+        iterations (np.ndarray): Array of iteration counts (n values).
+        times (np.ndarray): Array of corresponding execution times (T values).
+
+    Returns:
+        Tuple[float, float]: A tuple containing:
+            - a (float): Intercept parameter of the power-law model.
+            - b (float): Exponent parameter of the power-law model.
+
+    Raises:
+        ValueError: If there are fewer than 2 valid data points.
+
+    Note:
+        - Filters out non-positive values because log requires > 0
+        - Uses least squares regression on log-transformed data
+        - Model: T = exp(a) * n^b
     """
     mask = (iterations > 0) & (times > 0)
     it = iterations[mask]
@@ -26,7 +45,28 @@ def fit_power_law(iterations: np.ndarray, times: np.ndarray) -> Tuple[float, flo
     return float(a), float(b)
 
 
-def save_params_json(a: float, b: float, json_path: str = 'approximation_params.json') -> None:
+def save_params_json(
+    a: float,
+    b: float,
+    json_path: str = 'approximation_params.json'
+) -> None:
+    """
+    Save power-law approximation parameters to JSON file.
+
+    Stores the fitted parameters with multiple representations for
+    precision preservation and metadata.
+
+    Args:
+        a (float): Intercept parameter from power-law fit.
+        b (float): Exponent parameter from power-law fit.
+        json_path (str): Path to save the JSON file.
+                        Defaults to 'approximation_params.json'.
+
+    Note:
+        - Saves value, repr, and hex representations for precision
+        - Includes timestamp and data type metadata
+        - Used by π calculator for time estimation
+    """
     payload = {
         'a': {
             'value': float(a),
@@ -45,7 +85,26 @@ def save_params_json(a: float, b: float, json_path: str = 'approximation_params.
         json.dump(payload, f, ensure_ascii=False, indent=2)
 
 
-def predict(a: float, b: float, n: np.ndarray | float) -> np.ndarray | float:
+def predict(
+    a: float,
+    b: float,
+    n: np.ndarray | float
+) -> np.ndarray | float:
+    """
+    Predict execution time using power-law model.
+
+    Estimates computation time based on the fitted power-law model
+    T = exp(a) * n^b, where n is the number of iterations.
+
+    Args:
+        a (float): Intercept parameter from power-law fit.
+        b (float): Exponent parameter from power-law fit.
+        n (np.ndarray | float): Number of iterations (scalar or array).
+
+    Returns:
+        np.ndarray | float: Predicted execution time(s).
+                           Type matches input type.
+    """
     return np.exp(a) * np.power(n, b)
 
 def compute_approximation(task_id):
@@ -53,17 +112,10 @@ def compute_approximation(task_id):
 
 
 if __name__ == '__main__':
-    task_id = os.getenv('TASK_ID') or (sys.argv[1] if len(sys.argv) > 1 else None)
-
-    if task_id:
-        a, b, arr = compute_approximation(task_id)
-        iterations = arr[:, 0]
-        times = arr[:, 1]
-    else:
-        data = np.loadtxt('data.csv', delimiter=',', skiprows=1)
-        iterations = data[:, 0]
-        times = data[:, 1]
-        a, b = fit_power_law(iterations, times)
+    data = np.loadtxt('data.csv', delimiter=',', skiprows=1)
+    iterations = data[:, 0]
+    times = data[:, 1]
+    a, b = fit_power_law(iterations, times)
 
     print(f"a = {a:.3f}, b = {b:.3f}")
     print("T(1e6) ≈", predict(a, b, 1e6))

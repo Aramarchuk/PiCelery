@@ -1,11 +1,16 @@
 import json
 from decimal import Decimal, getcontext
+from typing import Optional, Callable
 import time
 
 from logariphmic_aproximation import predict
 
 
-def chudnovsky_pi(n_decimals, task_id=None, update_state=None):
+def calculate_pi(
+    n_decimals: int,
+    task_id: Optional[str] = None,
+    update_state: Optional[Callable] = None
+) -> str:
     getcontext().prec = n_decimals + 10
 
     C = 426880 * Decimal(10005).sqrt()
@@ -61,10 +66,6 @@ def chudnovsky_pi(n_decimals, task_id=None, update_state=None):
 
     format_str = f"{{0:.{n_decimals}f}}"
     return format_str.format(pi_result)
-
-
-def calculate_pi(n_decimals, task_id=None, update_state=None):
-    return chudnovsky_pi(n_decimals, task_id, update_state)
 
 if __name__ == '__main__':
     n = 1000

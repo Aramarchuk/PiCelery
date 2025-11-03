@@ -1,5 +1,6 @@
 import os
-from flask import Flask, request
+from typing import Dict, Any, Tuple
+from flask import Flask, request, Response
 from flask_restx import Api, Resource, fields
 from celery import Celery
 from pi_calculator import calculate_pi
@@ -37,7 +38,7 @@ progress_model = api.model('ProgressCheck', {
 })
 
 @celery.task(bind=True)
-def calculate_pi_task(self, n_decimals):
+def calculate_pi_task(self, n_decimals: int) -> Dict[str, Any]:
     """
     Celery task for calculating π (Pi) to specified decimal places.
 
@@ -90,7 +91,7 @@ def calculate_pi_task(self, n_decimals):
 class CalculatePi(Resource):
     @api.expect(pi_model)
     @api.doc('calculate_pi')
-    def post(self):
+    def post(self) -> Tuple[Dict[str, Any], int]:
         """
         Start asynchronous π (Pi) calculation.
 
@@ -116,10 +117,6 @@ class CalculatePi(Resource):
 
         Raises:
             400: If 'n' parameter is missing or invalid (not a positive integer)
-
-        Example:
-            POST /calculate_pi
-            {"n": 1000}
         """
         data = request.get_json()
 
@@ -144,7 +141,7 @@ class CalculatePi(Resource):
 class CheckProgress(Resource):
     @api.expect(progress_model)
     @api.doc('check_progress')
-    def post(self):
+    def post(self) -> Dict[str, Any]:
         """
         Check π (Pi) calculation progress and status.
 
@@ -217,7 +214,7 @@ class CheckProgress(Resource):
 @api.route('/health')
 class HealthCheck(Resource):
     @api.doc('health_check')
-    def get(self):
+    def get(self) -> Dict[str, str]:
         """
         Health check endpoint for the API service.
 
