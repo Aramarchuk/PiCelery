@@ -1,10 +1,8 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request
 from flask_restx import Api, Resource, fields
 from celery import Celery
-import uuid
 from pi_calculator import calculate_pi
-
 
 app = Flask(__name__)
 
@@ -29,18 +27,18 @@ api = Api(app, doc='/docs/', title='Pi Calculator API', version='1.0',
           description='API')
 
 pi_model = api.model('PiCalculation', {
-    'n': fields.Integer(required=True, description='Количество знаков после запятой'),
+    'n': fields.Integer(required=True, description='Number of decimal places'),
     'algorithm': fields.String(required=False, default='chudnovsky',
                                description='chudnovsky')
 })
 
 progress_model = api.model('ProgressCheck', {
-    'task_id': fields.String(required=True, description='ID задачи для проверки статуса')
+    'task_id': fields.String(required=True, description='Task ID for status checking')
 })
 
 @celery.task(bind=True)
 def calculate_pi_task(self, n_decimals):
-    """Задача для вычисления Pi в фоновом режиме с использованием алгоритма Чудновского"""
+    """Task for calculating Pi in background using Chudnovsky algorithm"""
     try:
         self.update_state(
             state='PROGRESS',
@@ -70,7 +68,7 @@ class CalculatePi(Resource):
     @api.expect(pi_model)
     @api.doc('calculate_pi')
     def post(self):
-        """Запустить асинхронное вычисление числа Pi"""
+        """Start asynchronous Pi calculation"""
         data = request.get_json()
 
         if not data or 'n' not in data:
@@ -95,7 +93,7 @@ class CheckProgress(Resource):
     @api.expect(progress_model)
     @api.doc('check_progress')
     def post(self):
-        """Проверить статус вычисления Pi"""
+        """Check Pi calculation status"""
         data = request.get_json()
 
         if not data or 'task_id' not in data:
@@ -104,10 +102,7 @@ class CheckProgress(Resource):
         task_id = data['task_id']
         task = calculate_pi_task.AsyncResult(task_id)
 
-        print(task.state)
-
         if task.state == 'PENDING':
-            print("AAAAAAA")
             response = {
                 'state': 'PROGRESS',
                 'progress': 0.0,
@@ -115,7 +110,6 @@ class CheckProgress(Resource):
             }
         elif task.state == 'PROGRESS':
             print(task.info)
-            print("AAAAAAA")
             response = {
                 'state': 'PROGRESS',
                 'progress': task.info.get('progress', 0.0),
@@ -141,7 +135,7 @@ class CheckProgress(Resource):
 class HealthCheck(Resource):
     @api.doc('health_check')
     def get(self):
-        """Проверить здоровье API"""
+        """Check API health"""
         return {'status': 'healthy', 'service': 'Pi Calculator API'}
 
 if __name__ == '__main__':

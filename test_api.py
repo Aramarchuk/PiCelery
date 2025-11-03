@@ -19,7 +19,6 @@ def test_pi_calculation(n_decimals, algorithm="chudnovsky"):
     """Test complete pi calculation workflow"""
     print(f"\n=== Testing {algorithm} algorithm with {n_decimals} decimals ===")
 
-    # Start calculation
     calc_data = {"n": n_decimals, "algorithm": algorithm}
     response = requests.post(f"{BASE_URL}/calculate_pi", json=calc_data)
 
@@ -42,14 +41,11 @@ def test_pi_calculation(n_decimals, algorithm="chudnovsky"):
 
         progress = response.json()
 
-        # Extract detailed progress information
         state = progress['state']
         progress_percent = progress['progress']
 
-        # Build detailed progress message
         progress_msg = f"State: {state}, Progress: {progress_percent:.1%}"
 
-        # Add detailed information if available
         if 'iteration' in progress and 'total_iterations' in progress:
             iteration = progress['iteration']
             total_iterations = progress['total_iterations']
@@ -62,7 +58,6 @@ def test_pi_calculation(n_decimals, algorithm="chudnovsky"):
 
         if state == 'FINISHED':
             result = progress.get('result', 'No result')
-            # Show full result for high precision
             if len(result) > 50:
                 print(f"Result: {result[:50]}...")
                 print(f"Full length: {len(result)} characters")
@@ -82,12 +77,10 @@ def main():
     """Run all tests"""
     print("Testing Pi Calculator API with Chudnovsky algorithm...")
 
-    # Test health
     if not test_health():
         print("Health check failed!")
         return
 
-    # Test Chudnovsky algorithm with different precision
     test_cases = [
         (10, "Basic precision test"),
         (50, "Medium precision test"),

@@ -16,13 +16,11 @@ def chudnovsky_pi(n_decimals, task_id=None, update_state=None):
     S = L
 
     iterations = max(1, n_decimals // 14 + 2)
-    csv_file = 'data.csv'
 
     start_time = time.time()
     last_update_time = start_time
 
     print(f"Starting Chudnovsky calculation: {iterations} iterations for {n_decimals} decimals")
-    print(f"Iteration data will be saved to {csv_file}")
 
     parametrs = json.load(open('approximation_params.json', 'r'))
     a = parametrs['a']['value']
@@ -69,6 +67,6 @@ def calculate_pi(n_decimals, task_id=None, update_state=None):
     return chudnovsky_pi(n_decimals, task_id, update_state)
 
 if __name__ == '__main__':
-    n = 1000  # Example: calculate Pi to 1000 decimal places
+    n = 1000
     pi_value = calculate_pi(n)
     print(f"Pi to {n} decimal places:\n{pi_value}")

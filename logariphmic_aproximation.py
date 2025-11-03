@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend for headless environments
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import json
 import datetime
@@ -48,13 +48,11 @@ def save_params_json(a: float, b: float, json_path: str = 'approximation_params.
 def predict(a: float, b: float, n: np.ndarray | float) -> np.ndarray | float:
     return np.exp(a) * np.power(n, b)
 
-#TODO: read data.csv
 def compute_approximation(task_id):
     pass
 
 
 if __name__ == '__main__':
-    # Determine data source: prefer Redis via task_id, else fallback to CSV for local testing
     task_id = os.getenv('TASK_ID') or (sys.argv[1] if len(sys.argv) > 1 else None)
 
     if task_id:
@@ -62,17 +60,14 @@ if __name__ == '__main__':
         iterations = arr[:, 0]
         times = arr[:, 1]
     else:
-        # Fallback to CSV for local run if no task_id provided
         data = np.loadtxt('data.csv', delimiter=',', skiprows=1)
         iterations = data[:, 0]
         times = data[:, 1]
         a, b = fit_power_law(iterations, times)
-        # Don't save JSON in CSV fallback mode
 
     print(f"a = {a:.3f}, b = {b:.3f}")
     print("T(1e6) ≈", predict(a, b, 1e6))
 
-    # --- Plot data points and fitted curve ---
     order = np.argsort(iterations)
     it_sorted = iterations[order]
     n_grid = np.linspace(it_sorted.min(), it_sorted.max(), 500)
@@ -80,7 +75,6 @@ if __name__ == '__main__':
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
 
-    # Linear scale
     ax1.scatter(iterations, times, s=18, alpha=0.65, label='Data')
     ax1.plot(n_grid, T_pred, color='crimson', linewidth=2,
              label=f'Fit: T = {np.exp(a):.3g} · n^{b:.3f}')
@@ -90,7 +84,6 @@ if __name__ == '__main__':
     ax1.grid(True, alpha=0.3)
     ax1.legend()
 
-    # Log-Log scale (power law becomes a straight line)
     ax2.scatter(iterations, times, s=18, alpha=0.65, label='Data')
     ax2.plot(n_grid, T_pred, color='crimson', linewidth=2, label='Fit')
     ax2.set_xscale('log')
