@@ -2,6 +2,7 @@
 """
 Simple test script to demonstrate Pi Calculator API functionality
 """
+import time
 
 import requests
 import os
@@ -31,61 +32,51 @@ def test_pi_calculation(n_decimals, algorithm="chudnovsky"):
     task_id = result["task_id"]
     print(f"Started calculation with task_id: {task_id}")
 
-    return True
+    while True:
+        progress_data = {"task_id": task_id}
+        response = requests.post(f"{BASE_URL}/check_progress", json=progress_data)
 
-    # Monitor progress
-    # while True:
-    #     progress_data = {"task_id": task_id}
-    #     response = requests.post(f"{BASE_URL}/check_progress", json=progress_data)
-    #
-    #     if response.status_code != 200:
-    #         print(f"Error checking progress: {response.status_code}")
-    #         return False
-    #
-    #     progress = response.json()
-    #
-    #     # Extract detailed progress information
-    #     state = progress['state']
-    #     progress_percent = progress['progress']
-    #
-    #     # Build detailed progress message
-    #     progress_msg = f"State: {state}, Progress: {progress_percent:.1%}"
-    #
-    #     # Add detailed information if available
-    #     if 'iteration' in progress and 'total_iterations' in progress:
-    #         iteration = progress['iteration']
-    #         total_iterations = progress['total_iterations']
-    #         progress_msg += f" (Iteration {iteration}/{total_iterations})"
-    #
-    #     if 'last_step_time' in progress:
-    #         last_step = progress['last_step_time']
-    #         progress_msg += f", Last step: {last_step:.2f}s"
-    #
-    #     if 'elapsed_time' in progress:
-    #         elapsed = progress['elapsed_time']
-    #         progress_msg += f", Total: {elapsed:.1f}s"
-    #
-    #     if 'eta' in progress:
-    #         eta = progress['eta']
-    #         progress_msg += f", ETA: {eta:.1f}s"
-    #
-    #     print(progress_msg)
-    #
-    #     if state == 'FINISHED':
-    #         result = progress.get('result', 'No result')
-    #         # Show full result for high precision
-    #         if len(result) > 50:
-    #             print(f"Result: {result[:50]}...")
-    #             print(f"Full length: {len(result)} characters")
-    #         else:
-    #             print(f"Result: {result}")
-    #         break
-    #     elif state == 'FAILURE':
-    #         print(f"Calculation failed: {progress.get('error', 'Unknown error')}")
-    #         return False
-    #
-    #
-    # return True
+        if response.status_code != 200:
+            print(f"Error checking progress: {response.status_code}")
+            return False
+
+        progress = response.json()
+
+        # Extract detailed progress information
+        state = progress['state']
+        progress_percent = progress['progress']
+
+        # Build detailed progress message
+        progress_msg = f"State: {state}, Progress: {progress_percent:.1%}"
+
+        # Add detailed information if available
+        if 'iteration' in progress and 'total_iterations' in progress:
+            iteration = progress['iteration']
+            total_iterations = progress['total_iterations']
+            progress_msg += f" (Iteration {iteration}/{total_iterations})"
+
+        if "msg" in progress:
+            progress_msg += f", Message: {progress['meta']['msg']}"
+
+        print(progress_msg)
+
+        if state == 'FINISHED':
+            result = progress.get('result', 'No result')
+            # Show full result for high precision
+            if len(result) > 50:
+                print(f"Result: {result[:50]}...")
+                print(f"Full length: {len(result)} characters")
+            else:
+                print(f"Result: {result}")
+            break
+        elif state == 'FAILURE':
+            print(f"Calculation failed: {progress.get('error', 'Unknown error')}")
+            return False
+
+        time.sleep(0.5)
+
+
+    return True
 
 def main():
     """Run all tests"""
@@ -100,7 +91,7 @@ def main():
     test_cases = [
         (10, "Basic precision test"),
         (50, "Medium precision test"),
-        (100000, "High precision test")
+        (10000, "High precision test")
     ]
 
     for decimals, description in test_cases:

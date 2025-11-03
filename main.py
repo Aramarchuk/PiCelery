@@ -3,7 +3,7 @@ from flask import Flask, request, jsonify
 from flask_restx import Api, Resource, fields
 from celery import Celery
 import uuid
-from pi_calculator import calculate_pi_with_algorithm
+from pi_calculator import calculate_pi
 
 
 app = Flask(__name__)
@@ -39,7 +39,7 @@ progress_model = api.model('ProgressCheck', {
 })
 
 @celery.task(bind=True)
-def calculate_pi_task(self, n_decimals, algorithm='chudnovsky'):
+def calculate_pi_task(self, n_decimals):
     """Задача для вычисления Pi в фоновом режиме с использованием алгоритма Чудновского"""
     try:
         self.update_state(
@@ -47,9 +47,8 @@ def calculate_pi_task(self, n_decimals, algorithm='chudnovsky'):
             meta={'progress': 0.0, 'task_id': self.request.id}
         )
 
-        result = calculate_pi_with_algorithm(
+        result = calculate_pi(
             n_decimals,
-            algorithm,
             self.request.id,
             self.update_state
         )
@@ -78,22 +77,18 @@ class CalculatePi(Resource):
             api.abort(400, "Parameter 'n' is required")
 
         n = data['n']
-        algorithm = data.get('algorithm', 'chudnovsky')
 
         if not isinstance(n, int) or n < 1:
             api.abort(400, "Parameter 'n' must be a positive integer")
 
-        if algorithm != 'chudnovsky':
-            api.abort(400, "Algorithm must be 'chudnovsky'")
-
-        task = calculate_pi_task.delay(n, algorithm)
+        task = calculate_pi_task.delay(n)
 
         return {
             'message': 'Pi calculation started',
             'task_id': task.id,
-            'algorithm': algorithm,
             'decimals': n
         }, 202
+
 
 @api.route('/check_progress')
 class CheckProgress(Resource):
@@ -109,13 +104,18 @@ class CheckProgress(Resource):
         task_id = data['task_id']
         task = calculate_pi_task.AsyncResult(task_id)
 
+        print(task.state)
+
         if task.state == 'PENDING':
+            print("AAAAAAA")
             response = {
                 'state': 'PROGRESS',
                 'progress': 0.0,
                 'result': None
             }
         elif task.state == 'PROGRESS':
+            print(task.info)
+            print("AAAAAAA")
             response = {
                 'state': 'PROGRESS',
                 'progress': task.info.get('progress', 0.0),

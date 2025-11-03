@@ -1,22 +1,46 @@
-version: "3.9"
+networks:
+  pi-network:
+    driver: bridge
 
 services:
   rabbitmq:
     image: rabbitmq:3-management
     ports:
-      - "5672:5672"      # порт для брокера
-      - "15672:15672"    # веб-интерфейс управления
+      - "5673:5672"
+      - "15673:15672"
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - pi-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    volumes:
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - pi-network
 
   app:
     build: .
-    command: python main.py
+    command: gunicorn --bind 0.0.0.0:5000 main:app
+    ports:
+      - "5000:5000"
     volumes:
       - .:/app
     depends_on:
       - rabbitmq
+      - redis
+    environment:
+      - CELERY_BROKER_URL=pyamqp://guest@rabbitmq//
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    networks:
+      - pi-network
 
   worker:
     build: .
@@ -25,3 +49,27 @@ services:
       - .:/app
     depends_on:
       - rabbitmq
+      - redis
+    environment:
+      - CELERY_BROKER_URL=pyamqp://guest@rabbitmq//
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    networks:
+      - pi-network
+
+  tester:
+    build: .
+    command: python test_api.py
+    volumes:
+      - .:/app
+    depends_on:
+      - app
+      - worker
+    environment:
+      - BASE_URL=http://app:5000
+    networks:
+      - pi-network
+    profiles:
+      - test
+
+volumes:
+  redis_data:
