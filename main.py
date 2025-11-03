@@ -1,4 +1,6 @@
 import os
+import redis
+from datetime import datetime, timezone
 from typing import Dict, Any, Tuple
 from flask import Flask, request
 from flask_restx import Api, Resource, fields
@@ -29,8 +31,6 @@ api = Api(app, doc='/docs/', title='Pi Calculator API', version='1.0',
 
 pi_model = api.model('PiCalculation', {
     'n': fields.Integer(required=True, description='Number of decimal places for π calculation'),
-    'algorithm': fields.String(required=False, default='chudnovsky',
-                               description='Algorithm to use (currently only "chudnovsky" is supported)')
 })
 
 progress_model = api.model('ProgressCheck', {
@@ -57,11 +57,6 @@ def calculate_pi_task(self, n_decimals: int) -> Dict[str, Any]:
 
     Raises:
         Exception: Propagates any calculation errors to the Celery worker.
-
-    Note:
-        - Progress updates are sent periodically during calculation
-        - Task state is tracked through Celery's backend
-        - Uses power-law approximation for progress estimation
     """
     try:
         self.update_state(
@@ -89,20 +84,17 @@ def calculate_pi_task(self, n_decimals: int) -> Dict[str, Any]:
 
 @api.route('/calculate_pi')
 class CalculatePi(Resource):
-    @api.expect(pi_model)
-    @api.doc('calculate_pi')
-    def post(self) -> Tuple[Dict[str, Any], int]:
+    @api.doc('calculate_pi', params={'n': {'description': 'Number of decimal places for π calculation', 'type': 'integer', 'required': True}})
+    def get(self) -> Tuple[Dict[str, Any], int]:
         """
         Start asynchronous π (Pi) calculation.
 
         Initiates a background task to calculate π to the specified number of
         decimal places using the Chudnovsky algorithm.
 
-        Request Body:
-            {
-                "n": 1000,
-                "algorithm": "chudnovsky"
-            }
+        Query Parameters:
+            n (int): Number of decimal places for π calculation.
+                    Must be a positive integer.
 
         Returns:
             tuple: A tuple containing:
@@ -114,13 +106,11 @@ class CalculatePi(Resource):
 
         Raises:
             400: If 'n' parameter is missing or invalid (not a positive integer)
+
+        Example:
+            GET /calculate_pi?n=1000
         """
-        data = request.get_json()
-
-        if not data or 'n' not in data:
-            api.abort(400, "Parameter 'n' is required")
-
-        n = data['n']
+        n = request.args.get('n', type=int)
 
         if not isinstance(n, int) or n < 1:
             api.abort(400, "Parameter 'n' must be a positive integer")
@@ -183,7 +173,6 @@ class CheckProgress(Resource):
                 'result': None
             }
         elif task.state == 'PROGRESS':
-            print(task.info)
             response = {
                 'state': 'PROGRESS',
                 'progress': task.info.get('progress', 0.0),
@@ -208,22 +197,59 @@ class CheckProgress(Resource):
 @api.route('/health')
 class HealthCheck(Resource):
     @api.doc('health_check')
-    def get(self) -> Dict[str, str]:
+    def get(self) -> Dict[str, Any]:
         """
-        Health check endpoint for the API service.
+        Comprehensive health check endpoint for the API service.
 
-        Returns the current status of the Pi Calculator API, indicating
-        whether the service is running and able to handle requests.
+        Checks the health status of the API and its dependencies (Redis, Celery workers)
+        to ensure the service is fully operational.
 
         Returns:
-            dict: Health status response:
-                - status (str): Service health status ('healthy' or 'unhealthy')
+            dict: Detailed health status response:
+                - status (str): Overall service health status ('healthy', 'degraded', 'unhealthy')
                 - service (str): Service name for identification
+                - timestamp (str): ISO timestamp of the health check
+                - checks (dict): Detailed status of each component:
+                    - redis (str): Redis connection status
+                    - celery (str): Celery worker availability status
+                    - api (str): API service status
 
         Example:
             GET /health
         """
-        return {'status': 'healthy', 'service': 'Pi Calculator API'}
+        health_status = {
+            'status': 'healthy',
+            'service': 'Pi Calculator API',
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'checks': {
+                'api': 'healthy'
+            }
+        }
+
+        # Check Redis connection
+        try:
+            redis_client = redis.from_url(celery_result_backend)
+            redis_client.ping()
+            health_status['checks']['redis'] = 'healthy'
+        except Exception as e:
+            health_status['status'] = 'unhealthy'
+            health_status['checks']['redis'] = f'unhealthy: {str(e)}'
+
+        # Check Celery workers
+        try:
+            inspect = celery.control.inspect()
+            stats = inspect.stats()
+            if stats and len(stats) > 0:
+                health_status['checks']['celery'] = f'healthy ({len(stats)} workers)'
+            else:
+                if health_status['status'] == 'healthy':
+                    health_status['status'] = 'degraded'
+                health_status['checks']['celery'] = 'no workers available'
+        except Exception as e:
+            health_status['status'] = 'unhealthy'
+            health_status['checks']['celery'] = f'unhealthy: {str(e)}'
+
+        return health_status
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

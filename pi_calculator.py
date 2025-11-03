@@ -3,7 +3,7 @@ from decimal import Decimal, getcontext
 from typing import Optional, Callable
 import time
 
-from logariphmic_aproximation import predict
+from logarithmic_approximation import predict
 
 
 def calculate_pi(

@@ -24,15 +24,7 @@ The system consists of:
 
 ### 1. Calculate Pi
 ```
-POST /calculate_pi
-```
-
-**Request Body:**
-```json
-{
-  "n": 1000,
-  "algorithm": "chudnovsky"
-}
+GET /calculate_pi?n=123
 ```
 
 **Response (202):**

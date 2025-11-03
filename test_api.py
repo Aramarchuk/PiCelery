@@ -15,12 +15,11 @@ def test_health():
     print("Health check:", response.json())
     return response.status_code == 200
 
-def test_pi_calculation(n_decimals, algorithm="chudnovsky"):
+def test_pi_calculation(n_decimals):
     """Test complete pi calculation workflow"""
-    print(f"\n=== Testing {algorithm} algorithm with {n_decimals} decimals ===")
+    print(f"\n=== Testing algorithm with {n_decimals} decimals ===")
 
-    calc_data = {"n": n_decimals, "algorithm": algorithm}
-    response = requests.post(f"{BASE_URL}/calculate_pi", json=calc_data)
+    response = requests.get(f"{BASE_URL}/calculate_pi?n={n_decimals}")
 
     if response.status_code != 202:
         print(f"Error starting calculation: {response.status_code}")
@@ -89,7 +88,7 @@ def main():
 
     for decimals, description in test_cases:
         print(f"\n--- {description} ---")
-        if not test_pi_calculation(decimals, "chudnovsky"):
+        if not test_pi_calculation(decimals):
             print(f"Test failed for {decimals} decimals")
             return
 
