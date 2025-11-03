@@ -1,6 +1,6 @@
 import os
 from typing import Dict, Any, Tuple
-from flask import Flask, request, Response
+from flask import Flask, request
 from flask_restx import Api, Resource, fields
 from celery import Celery
 from pi_calculator import calculate_pi
@@ -104,9 +104,6 @@ class CalculatePi(Resource):
                 "algorithm": "chudnovsky"
             }
 
-        Args:
-            None (uses JSON request body)
-
         Returns:
             tuple: A tuple containing:
                 - dict: Response with task information:
@@ -152,9 +149,6 @@ class CheckProgress(Resource):
             {
                 "task_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
             }
-
-        Args:
-            None (uses JSON request body)
 
         Returns:
             dict: Response containing task status information:
@@ -220,9 +214,6 @@ class HealthCheck(Resource):
 
         Returns the current status of the Pi Calculator API, indicating
         whether the service is running and able to handle requests.
-
-        Args:
-            None
 
         Returns:
             dict: Health status response:

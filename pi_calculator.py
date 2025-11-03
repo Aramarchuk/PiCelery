@@ -23,7 +23,6 @@ def calculate_pi(
     iterations = max(1, n_decimals // 14 + 2)
 
     start_time = time.time()
-    last_update_time = start_time
 
     print(f"Starting Chudnovsky calculation: {iterations} iterations for {n_decimals} decimals")
 
